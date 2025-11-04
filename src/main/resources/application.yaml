@@ -1,0 +1,93 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh
+spring:
+  profiles:
+    active: prod
+  application:
+    name: trading-bot
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+# profile Config
+bot-config:
+  trading-pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - XRPUSDT
+    - BNBUSDT
+    - SOLUSDT
+    - TRXUSDT
+    - DOGEUSDT
+    - ADAUSDT
+    - HYPEUSDT
+    - BCHUSDT
+    - SUIUSDT
+    - LINKUSDT
+    - XLMUSDT
+    - AVAXUSDT
+    - 1000SHIBUSDT
+    - HBARUSDT
+    - LTCUSDT
+    - DOTUSDT
+    - UNIUSDT
+    - AAVEUSDT
+    - 1000PEPEUSDT
+    - TAOUSDT
+    - APTUSDT
+    - NEARUSDT
+    - ICPUSDT
+    - ETCUSDT
+    - ONDOUSDT
+  profiles:
+    profile_test:  # profile name
+      leverage: 2
+      amount: 50       # cost value
+      tp-offset: 0.001   # 0.1%
+      api-key: 3cff95d1ebbce0eab87f97c6dbb675f4
+      api-secret: 2ba804b637b8877a6a1ad77ea3670228
+    profile_lane:
+      leverage: 15
+      amount: 10
+      tp-offset: 0.001
+      api-key: 01e9d589b75d3c0c88db6c90e0e1d313
+      api-secret: 0b74989bb7de682120bcda72d89bf5d3
+    btc1:
+      leverage: 3
+      amount: 30
+      tp-offset: 0.001
+      api-key: f4022e544b17f1b72a733003a2403cfe
+      api-secret: 89336f06dd81354b4f55128b78614526
+    eth1:
+      leverage: 4
+      amount: 20
+      tp-offset: 0.001
+      api-key: 6a7de8ba4c19268e66360fcd5b6c27ad
+      api-secret: 33bebfec03bf7babe4bbdfe2df7a2f0d
+    sol1:
+      leverage: 6
+      amount: 10
+      tp-offset: 0.001
+      api-key: 8d94bd32122cfab7e427be07a7a557b9
+      api-secret: 4c528d9c44032eaedce5c83e45c64a73
+    xrp1:
+      leverage: 1
+      amount: 40
+      tp-offset: 0.001
+      api-key: 9b3956e0789090294845cfa46941e862
+      api-secret: 7781d20a00eece1b05230ad9839f8516
+    1000pepe:
+      leverage: 7
+      amount: 10
+      tp-offset: 0.001
+      api-key: d171e0700fcefe3f39898b1a9e8081d8
+      api-secret: 1edef2bd907e74e3507cfa36c2535c7e
+  expired-time: 6000
+  max-leverage: 25

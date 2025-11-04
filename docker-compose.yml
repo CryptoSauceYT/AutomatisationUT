@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build: .
+    ports:
+      - "8080:8080"
+    container_name: trading-bot
+    volumes:
+      - ./config:/config
+      - /var/logs/trading-bot:/var/logs/trading-bot
+    environment:
+        SPRING_CONFIG_LOCATION: file:///config/
+        SPRING_PROFILES_ACTIVE: prod
+    networks:
+      - bot-network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - trading-bot
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

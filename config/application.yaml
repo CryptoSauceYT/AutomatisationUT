@@ -1,0 +1,69 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh
+spring:
+  profiles:
+    active: prod
+  application:
+    name: trading-bot
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+# profile Config
+bot-config:
+  trading-pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - XRPUSDT
+    - BNBUSDT
+    - SOLUSDT
+    - TRXUSDT
+    - DOGEUSDT
+    - ADAUSDT
+    - HYPEUSDT
+    - BCHUSDT
+    - SUIUSDT
+    - LINKUSDT
+    - XLMUSDT
+    - AVAXUSDT
+    - 1000SHIBUSDT
+    - HBARUSDT
+    - LTCUSDT
+    - DOTUSDT
+    - UNIUSDT
+    - AAVEUSDT
+    - 1000PEPEUSDT
+    - TAOUSDT
+    - APTUSDT
+    - NEARUSDT
+    - ICPUSDT
+    - ETCUSDT
+    - ONDOUSDT
+  profiles:
+    solana:
+      leverage: 10
+      amount: 1000
+      tp-offset: 0.0020
+      api-key: TA CLE API COPY TRADING
+      api-secret: TA CLE SECRETE API COPY TRADING
+    ethereum:
+      leverage: 4
+      amount: 1000
+      tp-offset: 0.0020
+      api-key: TA CLE API COPY TRADING
+      api-secret: TA CLE SECRETE API COPY TRADING
+    ripple:
+      leverage: 4
+      amount: 1000
+      tp-offset: 0.0020
+      api-key: TA CLE API COPY TRADING
+      api-secret: TA CLE SECRETE API COPY TRADING
+  expired-time: 10000
+  max-leverage: 50
