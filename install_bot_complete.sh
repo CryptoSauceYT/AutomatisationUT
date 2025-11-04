@@ -1,15 +1,14 @@
 #!/bin/bash
 
 ###############################################################################
-# SCRIPT D'INSTALLATION ULTRA-COMPLET - BOT TRADING BITUNIX
+# SCRIPT D'INSTALLATION AUTOMATIQUE V2 - BOT TRADING BITUNIX
 # 
-# Ce script fait TOUT automatiquement :
-# - Installation de Docker et dépendances
-# - Création de tous les fichiers nécessaires (avec bonnes images)
-# - Configuration SSL
-# - Démarrage du bot
+# Ce script détecte automatiquement le fichier trading-bot-main.zip
+# et fait une installation complète sans demander
 #
-# Usage: bash install_bot_complete.sh
+# Usage: 
+#   1. Upload ce script ET trading-bot-main.zip dans le même dossier
+#   2. bash install_bot_complete_v2.sh
 ###############################################################################
 
 set -e
@@ -35,7 +34,7 @@ print_info() { echo -e "${MAGENTA}ℹ️  $1${NC}"; }
 
 # Vérifier Ubuntu
 if ! grep -q "Ubuntu" /etc/os-release; then
-    print_error "Ce script nécessite Ubuntu. Système détecté: $(cat /etc/os-release | grep PRETTY_NAME)"
+    print_error "Ce script nécessite Ubuntu"
     exit 1
 fi
 
@@ -43,13 +42,62 @@ clear
 cat << "EOF"
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║        🤖 INSTALLATION BOT TRADING BITUNIX 🚀                ║
+║        🤖 INSTALLATION BOT TRADING BITUNIX V2 🚀             ║
 ║                                                               ║
-║     Installation complète automatisée en une commande        ║
+║     Installation ULTRA-AUTOMATISÉE - Détection auto du zip   ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 EOF
 echo ""
+
+# ============================================================================
+# DÉTECTION AUTOMATIQUE DU ZIP
+# ============================================================================
+print_step "🔍 DÉTECTION DU CODE SOURCE"
+
+# Chercher le zip dans le répertoire courant
+if [ -f "trading-bot-main.zip" ]; then
+    print_success "Fichier trading-bot-main.zip détecté !"
+    ZIP_FOUND=true
+    ZIP_PATH="$(pwd)/trading-bot-main.zip"
+elif [ -f "$HOME/trading-bot-main.zip" ]; then
+    print_success "Fichier trading-bot-main.zip trouvé dans $HOME"
+    ZIP_FOUND=true
+    ZIP_PATH="$HOME/trading-bot-main.zip"
+else
+    ZIP_FOUND=false
+fi
+
+if [ "$ZIP_FOUND" = false ]; then
+    print_warning "Fichier trading-bot-main.zip non trouvé"
+    echo ""
+    echo "Tu as 3 options :"
+    echo "1) J'ai le fichier trading-bot-main.zip (je vais l'uploader)"
+    echo "2) GitHub (j'ai un repo GitHub)"
+    echo "3) Annuler et voir les instructions"
+    read -p "Choix (1/2/3): " -n 1 -r CODE_CHOICE
+    echo
+    
+    if [[ $CODE_CHOICE == "1" ]]; then
+        print_info "Upload trading-bot-main.zip dans $(pwd)/"
+        print_info "Depuis ton PC : scp trading-bot-main.zip root@$(curl -s ifconfig.me):$(pwd)/"
+        read -p "Appuie sur Enter une fois uploadé..."
+        
+        if [ ! -f "trading-bot-main.zip" ]; then
+            print_error "Fichier toujours introuvable"
+            exit 1
+        fi
+        ZIP_PATH="$(pwd)/trading-bot-main.zip"
+        
+    elif [[ $CODE_CHOICE == "2" ]]; then
+        read -p "URL du dépôt GitHub: " REPO_URL
+        USE_GITHUB=true
+        
+    else
+        print_error "Installation annulée"
+        exit 1
+    fi
+fi
 
 # ============================================================================
 # 1. MISE À JOUR SYSTÈME
@@ -68,23 +116,12 @@ if command -v docker &> /dev/null; then
     print_warning "Docker déjà installé ($(docker --version))"
 else
     print_info "Installation de Docker..."
-    
-    # Prérequis
     sudo apt install -y -qq apt-transport-https ca-certificates curl software-properties-common
-    
-    # Clé GPG Docker
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    
-    # Dépôt Docker
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # Installation
     sudo apt update -qq
     sudo apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    
-    # Ajouter user au groupe docker
     sudo usermod -aG docker $USER
-    
     print_success "Docker installé: $(docker --version)"
 fi
 
@@ -125,54 +162,54 @@ if [ -d "$BOT_DIR" ]; then
     fi
 fi
 
-mkdir -p "$BOT_DIR"/{config,src/main/java/com/bot}
+mkdir -p "$BOT_DIR"
 cd "$BOT_DIR"
 print_success "Répertoire créé: $BOT_DIR"
 
 # ============================================================================
-# 6. RÉCUPÉRATION DU CODE
+# 6. EXTRACTION DU CODE SOURCE
 # ============================================================================
-print_step "6️⃣  RÉCUPÉRATION DU CODE"
-echo "Comment veux-tu récupérer le code?"
-echo "1) GitHub (recommandé)"
-echo "2) Upload manuel (trading-bot-main.zip)"
-read -p "Choix (1 ou 2): " -n 1 -r DOWNLOAD_CHOICE
-echo
+print_step "6️⃣  EXTRACTION DU CODE SOURCE"
 
-if [[ $DOWNLOAD_CHOICE == "1" ]]; then
-    read -p "URL du dépôt GitHub: " REPO_URL
+if [ "$USE_GITHUB" = true ]; then
+    print_info "Clonage depuis GitHub..."
     git clone "$REPO_URL" .
     print_success "Code récupéré depuis GitHub"
+else
+    print_info "Extraction du fichier trading-bot-main.zip..."
+    cp "$ZIP_PATH" .
+    unzip -q trading-bot-main.zip
     
-elif [[ $DOWNLOAD_CHOICE == "2" ]]; then
-    print_warning "Uploade le fichier trading-bot-main.zip dans $BOT_DIR"
-    print_info "Commande: scp trading-bot-main.zip $(whoami)@$(curl -s ifconfig.me):$BOT_DIR/"
-    read -p "Appuie sur Enter une fois uploadé..."
-    
-    if [ -f "trading-bot-main.zip" ]; then
-        unzip -q trading-bot-main.zip
-        if [ -d "trading-bot-main" ]; then
-            mv trading-bot-main/* .
-            rm -rf trading-bot-main trading-bot-main.zip
-        fi
-        print_success "Code extrait"
-    else
-        print_error "Fichier introuvable"
-        exit 1
+    # Déplacer le contenu si dans un sous-dossier
+    if [ -d "trading-bot-main" ]; then
+        mv trading-bot-main/* .
+        rm -rf trading-bot-main
     fi
+    
+    rm -f trading-bot-main.zip
+    print_success "Code extrait"
 fi
 
-# Vérifier si pom.xml existe, sinon on est dans une installation partielle
+# Vérifier que le code est présent
 if [ ! -f "pom.xml" ]; then
-    print_warning "Code Java non trouvé, création des fichiers Docker uniquement..."
+    print_error "Code source Java introuvable (pom.xml absent)"
+    print_error "Assure-toi que trading-bot-main.zip contient le code complet"
+    exit 1
 fi
 
-# ============================================================================
-# 7. CRÉATION AUTOMATIQUE DES FICHIERS DOCKER (IMAGES CORRIGÉES)
-# ============================================================================
-print_step "7️⃣  CRÉATION DES FICHIERS DOCKER"
+print_success "Code source détecté (pom.xml trouvé)"
 
-# Dockerfile avec eclipse-temurin (image corrigée)
+# ============================================================================
+# 7. CRÉATION/CORRECTION DES FICHIERS DOCKER
+# ============================================================================
+print_step "7️⃣  CRÉATION DES FICHIERS DOCKER CORRIGÉS"
+
+# Backup de l'ancien Dockerfile si existe
+if [ -f "Dockerfile" ]; then
+    mv Dockerfile Dockerfile.old
+fi
+
+# Nouveau Dockerfile avec eclipse-temurin
 cat > Dockerfile << 'DOCKERFILE_END'
 FROM eclipse-temurin:11-jdk-slim
 
@@ -188,7 +225,12 @@ ENTRYPOINT ["java", "-jar", "./trading-bot.jar"]
 DOCKERFILE_END
 print_success "Dockerfile créé (eclipse-temurin:11-jdk-slim)"
 
-# docker-compose.yml (sans version obsolète)
+# Backup de l'ancien docker-compose si existe
+if [ -f "docker-compose.yml" ]; then
+    mv docker-compose.yml docker-compose.yml.old
+fi
+
+# docker-compose.yml sans version obsolète
 cat > docker-compose.yml << 'COMPOSE_END'
 services:
   trading-bot:
@@ -231,7 +273,7 @@ print_success "docker-compose.yml créé"
 print_step "8️⃣  CONFIGURATION SSL"
 echo "Type de certificat SSL:"
 echo "1) Let's Encrypt (GRATUIT, nécessite un domaine)"
-echo "2) Auto-signé (pour tests)"
+echo "2) Auto-signé (pour tests, utilise juste l'IP)"
 read -p "Choix (1 ou 2): " -n 1 -r SSL_CHOICE
 echo
 
@@ -240,16 +282,11 @@ sudo mkdir -p /etc/nginx/ssl
 if [[ $SSL_CHOICE == "1" ]]; then
     read -p "Nom de domaine (ex: bot.example.com): " DOMAIN_NAME
     
-    # Installation Certbot
     sudo apt install -y -qq certbot
-    
-    # Arrêter nginx si en cours
     docker compose down 2>/dev/null || true
     
-    # Obtenir certificat
     sudo certbot certonly --standalone -d "$DOMAIN_NAME" --non-interactive --agree-tos --email admin@$DOMAIN_NAME
     
-    # Copier certificats
     sudo cp /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem /etc/nginx/ssl/$DOMAIN_NAME.crt
     sudo cp /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem /etc/nginx/ssl/$DOMAIN_NAME.key
     sudo chmod 644 /etc/nginx/ssl/*
@@ -264,7 +301,6 @@ if [[ $SSL_CHOICE == "1" ]]; then
 elif [[ $SSL_CHOICE == "2" ]]; then
     PUBLIC_IP=$(curl -s ifconfig.me)
     
-    # Générer certificat auto-signé
     sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout /etc/nginx/ssl/selfsigned.key \
         -out /etc/nginx/ssl/selfsigned.crt \
@@ -278,10 +314,11 @@ elif [[ $SSL_CHOICE == "2" ]]; then
     WEBHOOK_URL="https://$PUBLIC_IP/api/v1/place_limit_order"
     
     print_success "Certificat auto-signé créé"
-    print_warning "⚠️  Les navigateurs afficheront un warning"
+    print_warning "⚠️  Les navigateurs afficheront un warning (normal)"
 fi
 
 # Créer nginx.conf
+mkdir -p config
 cat > config/nginx.conf << NGINX_END
 server {
     listen 443 ssl;
@@ -308,7 +345,6 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         
-        # Timeouts augmentés pour TradingView
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
@@ -318,82 +354,15 @@ NGINX_END
 print_success "nginx.conf créé"
 
 # ============================================================================
-# 9. CRÉATION DU FICHIER DE CONFIGURATION
+# 9. CONFIGURATION APPLICATION.YAML
 # ============================================================================
-print_step "9️⃣  CRÉATION DE LA CONFIGURATION"
+print_step "9️⃣  CONFIGURATION DU BOT"
 
-cat > config/application.yaml << 'CONFIG_END'
-server:
-  port: 8080
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: refresh
-
-spring:
-  profiles:
-    active: prod
-  application:
-    name: trading-bot
-  cloud:
-    config:
-      enabled: false
-      import-check:
-        enabled: false
-
-# Configuration du bot
-bot-config:
-  trading-pairs:
-    - BTCUSDT
-    - ETHUSDT
-    - XRPUSDT
-    - BNBUSDT
-    - SOLUSDT
-    - TRXUSDT
-    - DOGEUSDT
-    - ADAUSDT
-    - HYPEUSDT
-    - BCHUSDT
-    - SUIUSDT
-    - LINKUSDT
-    - XLMUSDT
-    - AVAXUSDT
-    - 1000SHIBUSDT
-    - HBARUSDT
-    - LTCUSDT
-    - DOTUSDT
-    - UNIUSDT
-    - AAVEUSDT
-    - 1000PEPEUSDT
-    - TAOUSDT
-    - APTUSDT
-    - NEARUSDT
-    - ICPUSDT
-    - ETCUSDT
-    - ONDOUSDT
-
-  profiles:
-    # ⚠️  EXEMPLE - REMPLACE PAR TES VRAIES CLÉS API
-    eth-swing:
-      leverage: 5
-      amount: 100
-      tp-offset: 0.0015
-      api-key: YOUR_BITUNIX_API_KEY_HERE
-      api-secret: YOUR_BITUNIX_API_SECRET_HERE
-    
-    btc-longterm:
-      leverage: 3
-      amount: 200
-      tp-offset: 0.0020
-      api-key: YOUR_BITUNIX_API_KEY_HERE
-      api-secret: YOUR_BITUNIX_API_SECRET_HERE
-
-  expired-time: 7000
-  max-leverage: 25
-CONFIG_END
-print_success "application.yaml créé (template)"
+# Backup de l'ancienne config si existe
+if [ -f "config/application.yaml" ]; then
+    cp config/application.yaml config/application.yaml.backup_$(date +%Y%m%d_%H%M%S)
+    print_success "Backup de l'ancienne config créé"
+fi
 
 print_warning ""
 print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -407,28 +376,20 @@ echo ""
 echo "Configure au minimum un profil avec:"
 echo "  • Tes clés API Bitunix"
 echo "  • Le levier et montant souhaités"
-echo "  • Le tp-offset selon ta stratégie"
 echo ""
 read -p "Appuie sur Enter une fois la configuration terminée..."
 
 # ============================================================================
-# 10. DÉMARRAGE DU BOT
+# 10. BUILD ET DÉMARRAGE
 # ============================================================================
-print_step "🔟 DÉMARRAGE DU BOT"
+print_step "🔟 BUILD ET DÉMARRAGE DU BOT"
 
-# Si le code Java n'existe pas, on ne peut pas build
-if [ ! -f "pom.xml" ]; then
-    print_error "Impossible de démarrer: code source Java manquant"
-    print_info "Assure-toi d'avoir tous les fichiers du projet dans $BOT_DIR"
-    exit 1
-fi
-
+print_info "Construction de l'image Docker (peut prendre 2-3 minutes)..."
 docker compose up -d --build
 
 print_info "Attente du démarrage (15 secondes)..."
 sleep 15
 
-# Vérifier que les containers tournent
 if docker compose ps | grep -q "Up"; then
     print_success "Bot démarré avec succès! 🎉"
 else
@@ -455,7 +416,6 @@ fi
 # ============================================================================
 print_step "1️⃣2️⃣ CRÉATION DES SCRIPTS UTILES"
 
-# Script monitoring
 cat > "$HOME/monitor_bot.sh" << 'EOF'
 #!/bin/bash
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -476,7 +436,6 @@ curl -s http://localhost:8080/api/v1/check | jq 2>/dev/null || curl -s http://lo
 EOF
 chmod +x "$HOME/monitor_bot.sh"
 
-# Script backup
 cat > "$HOME/backup_bot.sh" << 'EOF'
 #!/bin/bash
 BACKUP_DIR=~/bot-backups
@@ -488,7 +447,6 @@ echo "✅ Backup: bot_config_$DATE.tar.gz"
 EOF
 chmod +x "$HOME/backup_bot.sh"
 
-# Script redémarrage
 cat > "$HOME/restart_bot.sh" << 'EOF'
 #!/bin/bash
 echo "🔄 Redémarrage du bot..."
@@ -545,22 +503,11 @@ cat << EOF
    • Commence avec de PETITS montants
    • Pas de permission Withdraw sur les clés API
    • Monitore quotidiennement pendant 1 semaine
-   • Backup régulier: ~/backup_bot.sh
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🛠️  COMMANDES UTILES:
-   • Voir logs:     docker compose logs -f trading-bot
-   • Status:        docker compose ps
-   • Redémarrer:    ~/restart_bot.sh
-   • Arrêter:       docker compose down
-   • Monitoring:    ~/monitor_bot.sh
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 EOF
 
-# Proposer de voir les logs
 read -p "Veux-tu voir les logs en temps réel? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
