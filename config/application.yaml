@@ -65,5 +65,5 @@ bot-config:
       tp-offset: 0.0020
       api-key: TA CLE API COPY TRADING
       api-secret: TA CLE SECRETE API COPY TRADING
-  expired-time: 10000
+  expired-time: 30000
   max-leverage: 50
