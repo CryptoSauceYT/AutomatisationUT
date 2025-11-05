@@ -74,6 +74,22 @@ print_success "Code source détecté (pom.xml trouvé)"
 CURRENT_DIR=$(pwd)
 print_info "Répertoire de travail : $CURRENT_DIR"
 
+
+# Après la vérification du code source
+print_step "📦 TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ"
+
+mkdir -p target
+wget -q https://github.com/CryptoSauceYT/AutomatisationUT/releases/download/v1.0.0/trading-bot-1.0.0.jar \
+  -O target/trading-bot-1.0.0.jar
+
+if [ -f "target/trading-bot-1.0.0.jar" ]; then
+    print_success "JAR téléchargé ($(du -h target/trading-bot-1.0.0.jar | cut -f1))"
+else
+    print_error "Échec du téléchargement du JAR"
+    exit 1
+fi
+
+
 # ============================================================================
 # 1. MISE À JOUR SYSTÈME
 # ============================================================================
