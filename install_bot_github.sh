@@ -74,22 +74,6 @@ print_success "Code source détecté (pom.xml trouvé)"
 CURRENT_DIR=$(pwd)
 print_info "Répertoire de travail : $CURRENT_DIR"
 
-
-# Après la vérification du code source
-print_step "📦 TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ"
-
-mkdir -p target
-wget -q https://github.com/CryptoSauceYT/AutomatisationUT/releases/download/v1.0.0/trading-bot-1.0.0.jar \
-  -O target/trading-bot-1.0.0.jar
-
-if [ -f "target/trading-bot-1.0.0.jar" ]; then
-    print_success "JAR téléchargé ($(du -h target/trading-bot-1.0.0.jar | cut -f1))"
-else
-    print_error "Échec du téléchargement du JAR"
-    exit 1
-fi
-
-
 # ============================================================================
 # 1. MISE À JOUR SYSTÈME
 # ============================================================================
@@ -135,15 +119,39 @@ sudo ufw allow 8080/tcp
 print_success "Firewall configuré"
 
 # ============================================================================
-# 5. VÉRIFICATION DES FICHIERS DOCKER
+# 5. TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ
 # ============================================================================
-print_step "5️⃣  VÉRIFICATION DES FICHIERS DOCKER"
+print_step "5️⃣  TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ"
 
-# Vérifier Dockerfile
-if [ ! -f "Dockerfile" ]; then
-    print_warning "Dockerfile manquant, création..."
-    cat > Dockerfile << 'DOCKERFILE_END'
-FROM eclipse-temurin:11-jdk-slim
+mkdir -p target
+
+if [ ! -f "target/trading-bot-1.0.0.jar" ]; then
+    print_info "Téléchargement du JAR depuis GitHub Releases..."
+    wget -q --show-progress \
+        https://github.com/CryptoSauceYT/AutomatisationUT/releases/download/v1.0.0/trading-bot-1.0.0.jar \
+        -O target/trading-bot-1.0.0.jar
+    
+    if [ -f "target/trading-bot-1.0.0.jar" ]; then
+        JAR_SIZE=$(du -h target/trading-bot-1.0.0.jar | cut -f1)
+        print_success "JAR téléchargé ($JAR_SIZE)"
+    else
+        print_error "Échec du téléchargement du JAR"
+        print_error "Vérifie ta connexion Internet et réessaye"
+        exit 1
+    fi
+else
+    print_success "JAR déjà présent"
+fi
+
+# ============================================================================
+# 6. VÉRIFICATION DES FICHIERS DOCKER
+# ============================================================================
+print_step "6️⃣  VÉRIFICATION DES FICHIERS DOCKER"
+
+# Vérifier Dockerfile - FORCER la version simple
+print_warning "Création du Dockerfile optimisé..."
+cat > Dockerfile << 'DOCKERFILE_END'
+FROM eclipse-temurin:11-jdk
 
 WORKDIR /app
 
@@ -155,10 +163,7 @@ EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "./trading-bot.jar"]
 DOCKERFILE_END
-    print_success "Dockerfile créé"
-else
-    print_success "Dockerfile trouvé"
-fi
+print_success "Dockerfile créé"
 
 # Vérifier docker-compose.yml
 if [ ! -f "docker-compose.yml" ]; then
