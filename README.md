@@ -19,3 +19,5 @@ Le script installe automatiquement :
 ```
 
 
+Ton URL webhook:
+https://TON_IP_PUBLIQUE/api/v1/place_limit_order
