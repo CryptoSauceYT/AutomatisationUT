@@ -50,19 +50,19 @@ bot-config:
     solana:
       leverage: 10
       amount: 1000
-      tp-offset: 0.0020
+      tp-offset: 0.0010
       api-key: API COPY TRADING
       api-secret: SECRET API COPY TRADING
     ethereum:
       leverage: 4
       amount: 1000
-      tp-offset: 0.0020
+      tp-offset: 0.0010
       api-key: API COPY TRADING
       api-secret: SECRET API COPY TRADING
     ripple:
       leverage: 4
       amount: 1000
-      tp-offset: 0.0020
+      tp-offset: 0.0010
       api-key: API COPY TRADING
       api-secret: SECRET API COPY TRADING
   expired-time: 120000
