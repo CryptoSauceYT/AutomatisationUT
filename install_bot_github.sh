@@ -22,6 +22,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 print_step() {
@@ -289,54 +290,28 @@ COMPOSE_END
 print_success "docker-compose.yml created"
 
 # ============================================================================
-# 7. SSL CONFIGURATION
+# 7. SSL CONFIGURATION (Self-signed)
 # ============================================================================
 print_step "7. SSL CONFIGURATION"
-echo "SSL certificate type:"
-echo "1) Let's Encrypt (FREE, requires a domain)"
-echo "2) Self-signed (for testing, uses IP only)"
-read -p "Choice (1 or 2): " -n 1 -r SSL_CHOICE
-echo
 
 sudo mkdir -p /etc/nginx/ssl
 
-if [[ $SSL_CHOICE == "1" ]]; then
-    read -p "Domain name (e.g., bot.example.com): " DOMAIN_NAME
-    
-    sudo apt-get install -y certbot 2>/dev/null
-    docker compose down 2>/dev/null || true
-    
-    sudo certbot certonly --standalone -d "$DOMAIN_NAME" --non-interactive --agree-tos --email admin@$DOMAIN_NAME
-    
-    sudo cp /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem /etc/nginx/ssl/$DOMAIN_NAME.crt
-    sudo cp /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem /etc/nginx/ssl/$DOMAIN_NAME.key
-    sudo chmod 644 /etc/nginx/ssl/*
-    
-    SERVER_NAME="$DOMAIN_NAME"
-    SSL_CERT="/etc/nginx/ssl/$DOMAIN_NAME.crt"
-    SSL_KEY="/etc/nginx/ssl/$DOMAIN_NAME.key"
-    WEBHOOK_URL="https://$DOMAIN_NAME/api/v1/place_limit_order"
-    
-    print_success "Let's Encrypt certificate configured"
-    
-elif [[ $SSL_CHOICE == "2" ]]; then
-    PUBLIC_IP=$(curl -s ifconfig.me)
-    
-    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout /etc/nginx/ssl/selfsigned.key \
-        -out /etc/nginx/ssl/selfsigned.crt \
-        -subj "/C=CH/ST=Zurich/L=Zurich/O=TradingBot/CN=$PUBLIC_IP" 2>/dev/null
-    
-    sudo chmod 644 /etc/nginx/ssl/*
-    
-    SERVER_NAME="$PUBLIC_IP"
-    SSL_CERT="/etc/nginx/ssl/selfsigned.crt"
-    SSL_KEY="/etc/nginx/ssl/selfsigned.key"
-    WEBHOOK_URL="https://$PUBLIC_IP/api/v1/place_limit_order"
-    
-    print_success "Self-signed certificate created"
-    print_warning "Browsers will show a warning (this is normal)"
-fi
+print_info "Generating self-signed SSL certificate..."
+PUBLIC_IP=$(curl -s ifconfig.me)
+
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/selfsigned.key \
+    -out /etc/nginx/ssl/selfsigned.crt \
+    -subj "/C=CH/ST=Zurich/L=Zurich/O=TradingBot/CN=$PUBLIC_IP" 2>/dev/null
+
+sudo chmod 644 /etc/nginx/ssl/*
+
+SERVER_NAME="$PUBLIC_IP"
+SSL_CERT="/etc/nginx/ssl/selfsigned.crt"
+SSL_KEY="/etc/nginx/ssl/selfsigned.key"
+WEBHOOK_URL="https://$PUBLIC_IP/api/v1/place_limit_order"
+
+print_success "Self-signed certificate created for $PUBLIC_IP"
 
 # Create nginx.conf
 mkdir -p config
@@ -375,36 +350,9 @@ NGINX_END
 print_success "nginx.conf created"
 
 # ============================================================================
-# 8. APPLICATION.YAML CONFIGURATION
+# 8. BUILD AND START
 # ============================================================================
-print_step "8. BOT CONFIGURATION"
-
-# Backup existing config if present
-if [ -f "config/application.yaml" ]; then
-    cp config/application.yaml config/application.yaml.backup_$(date +%Y%m%d_%H%M%S)
-    print_success "Config backup created"
-fi
-
-print_warning ""
-print_warning "=============================================="
-print_warning "   API KEYS CONFIGURATION REQUIRED"
-print_warning "=============================================="
-echo ""
-echo "Edit the configuration file now:"
-echo ""
-echo "  nano $CURRENT_DIR/config/application.yaml"
-echo ""
-echo "Configure at least one profile with:"
-echo "  - Your Bitunix API keys"
-echo "  - Desired leverage and amount"
-echo "  - tp-offset according to your strategy"
-echo ""
-read -p "Press Enter once configuration is complete..."
-
-# ============================================================================
-# 9. BUILD AND START
-# ============================================================================
-print_step "9. BUILD AND START BOT"
+print_step "8. BUILD AND START BOT"
 
 print_info "Building Docker image (may take 2-3 minutes)..."
 docker compose up -d --build
@@ -421,9 +369,9 @@ else
 fi
 
 # ============================================================================
-# 10. TESTS
+# 9. TESTS
 # ============================================================================
-print_step "10. FUNCTIONALITY TESTS"
+print_step "9. FUNCTIONALITY TESTS"
 
 echo "Testing health check..."
 sleep 3
@@ -434,9 +382,9 @@ else
 fi
 
 # ============================================================================
-# 11. UTILITY SCRIPTS
+# 10. UTILITY SCRIPTS
 # ============================================================================
-print_step "11. CREATING UTILITY SCRIPTS"
+print_step "10. CREATING UTILITY SCRIPTS"
 
 cat > "$HOME/monitor_bot.sh" << 'EOF'
 #!/bin/bash
@@ -489,63 +437,33 @@ echo "  - ~/backup_bot.sh"
 echo "  - ~/restart_bot.sh"
 
 # ============================================================================
-# FINAL SUMMARY
+# FINAL SUCCESS MESSAGE
 # ============================================================================
-print_step "INSTALLATION COMPLETE!"
-
-cat << EOF
-
-+===============================================================+
-|             YOUR BOT IS NOW OPERATIONAL!                      |
-+===============================================================+
-
-Directory:     $CURRENT_DIR
-Configuration: $CURRENT_DIR/config/application.yaml
-Logs:          docker compose logs -f trading-bot
-Server Time:   UTC ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))
-
-WEBHOOK URL FOR TRADINGVIEW:
-   
-   $WEBHOOK_URL
-
---------------------------------------------------------------
-
-NEXT STEPS:
-
-1. Check the bot:
-   ~/monitor_bot.sh
-
-2. Configure TradingView:
-   - Create an alert on your strategy
-   - Webhook URL: $WEBHOOK_URL
-   - Message: {{strategy.order.alert_message}}
-
-3. Test with a SMALL amount first!
-
---------------------------------------------------------------
-
-SECURITY REMINDER:
-   - Start with SMALL amounts (10-50 USDT)
-   - No Withdraw permission on API keys
-   - Monitor daily for 1 week
-   - Regular backup: ~/backup_bot.sh
-
---------------------------------------------------------------
-
-USEFUL COMMANDS:
-   - View logs:     docker compose logs -f trading-bot
-   - Status:        docker compose ps
-   - Restart:       ~/restart_bot.sh
-   - Stop:          docker compose down
-   - Monitoring:    ~/monitor_bot.sh
-   - Update:        cd ~/AutomatisationUT && git pull && ~/restart_bot.sh
-
---------------------------------------------------------------
-
-EOF
-
-read -p "Do you want to see logs in real-time? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    docker compose logs -f trading-bot
-fi
+echo ""
+echo ""
+echo -e "${GREEN}${BOLD}=================================================================${NC}"
+echo -e "${GREEN}${BOLD}                                                                 ${NC}"
+echo -e "${GREEN}${BOLD}     INSTALLATION SUCCESSFUL!                                   ${NC}"
+echo -e "${GREEN}${BOLD}                                                                 ${NC}"
+echo -e "${GREEN}${BOLD}     Your server is now ready.                                  ${NC}"
+echo -e "${GREEN}${BOLD}                                                                 ${NC}"
+echo -e "${GREEN}${BOLD}=================================================================${NC}"
+echo ""
+echo -e "${GREEN}${BOLD}WEBHOOK URL:${NC} $WEBHOOK_URL"
+echo ""
+echo -e "${YELLOW}${BOLD}NEXT STEPS:${NC}"
+echo ""
+echo -e "  ${BOLD}1.${NC} Edit your API keys in the configuration file:"
+echo ""
+echo -e "     ${MAGENTA}nano $CURRENT_DIR/config/application.yaml${NC}"
+echo ""
+echo -e "  ${BOLD}2.${NC} After saving your configuration, restart the bot:"
+echo ""
+echo -e "     ${MAGENTA}~/restart_bot.sh${NC}"
+echo ""
+echo -e "  ${BOLD}3.${NC} Your bot will then be ready to receive webhook requests!"
+echo ""
+echo -e "${GREEN}${BOLD}=================================================================${NC}"
+echo -e "${GREEN}${BOLD}                    HAPPY TRADING!                              ${NC}"
+echo -e "${GREEN}${BOLD}=================================================================${NC}"
+echo ""
