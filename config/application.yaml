@@ -51,19 +51,19 @@ bot-config:
       leverage: 10
       amount: 1000
       tp-offset: 0.0020
-      api-key: TA CLE API COPY TRADING
-      api-secret: TA CLE SECRETE API COPY TRADING
+      api-key: API COPY TRADING
+      api-secret: SECRET API COPY TRADING
     ethereum:
       leverage: 4
       amount: 1000
       tp-offset: 0.0020
-      api-key: TA CLE API COPY TRADING
-      api-secret: TA CLE SECRETE API COPY TRADING
+      api-key: API COPY TRADING
+      api-secret: SECRET API COPY TRADING
     ripple:
       leverage: 4
       amount: 1000
       tp-offset: 0.0020
-      api-key: TA CLE API COPY TRADING
-      api-secret: TA CLE SECRETE API COPY TRADING
+      api-key: API COPY TRADING
+      api-secret: SECRET API COPY TRADING
   expired-time: 120000
   max-leverage: 50
