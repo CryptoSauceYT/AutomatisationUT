@@ -1,10 +1,12 @@
 #!/bin/bash
 
 ###############################################################################
-# SCRIPT D'INSTALLATION BOT TRADING BITUNIX - VERSION GITHUB
+# BITUNIX TRADING BOT INSTALLATION SCRIPT - GITHUB VERSION
 # 
-# Ce script est optimisé pour une installation depuis GitHub
-# Le code est déjà présent après le git clone
+# Optimized for installation from GitHub
+# Code is already present after git clone
+#
+# Compatible with Ubuntu 24.04+ (including Ubuntu 25.x)
 #
 # Usage: 
 #   git clone https://github.com/CryptoSauceYT/AutomatisationUT.git
@@ -14,7 +16,7 @@
 
 set -e
 
-# Couleurs
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -28,132 +30,209 @@ print_step() {
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 }
 
-print_error() { echo -e "${RED}❌ ERREUR: $1${NC}"; }
-print_success() { echo -e "${GREEN}✅ $1${NC}"; }
-print_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
-print_info() { echo -e "${MAGENTA}ℹ️  $1${NC}"; }
+print_error() { echo -e "${RED}ERROR: $1${NC}"; }
+print_success() { echo -e "${GREEN}$1${NC}"; }
+print_warning() { echo -e "${YELLOW}$1${NC}"; }
+print_info() { echo -e "${MAGENTA}$1${NC}"; }
 
-# Vérifier Ubuntu
+# Check Ubuntu
 if ! grep -q "Ubuntu" /etc/os-release; then
-    print_error "Ce script nécessite Ubuntu"
+    print_error "This script requires Ubuntu"
     exit 1
 fi
 
+# Get Ubuntu version info
+UBUNTU_VERSION=$(lsb_release -rs)
+UBUNTU_CODENAME=$(lsb_release -cs)
+print_info "Detected Ubuntu $UBUNTU_VERSION ($UBUNTU_CODENAME)"
+
 clear
 cat << "EOF"
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║        🤖 INSTALLATION BOT TRADING BITUNIX 🚀                ║
-║                                                               ║
-║          Installation depuis GitHub                          ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
++===============================================================+
+|                                                               |
+|         BITUNIX TRADING BOT INSTALLATION                      |
+|                                                               |
+|              Installation from GitHub                         |
+|                                                               |
++===============================================================+
 EOF
 echo ""
 
 # ============================================================================
-# VÉRIFICATION DU CODE SOURCE
+# SOURCE CODE VERIFICATION
 # ============================================================================
-print_step "🔍 VÉRIFICATION DU CODE SOURCE"
+print_step "SOURCE CODE VERIFICATION"
 
 if [ ! -f "pom.xml" ]; then
-    print_error "pom.xml introuvable !"
-    print_error "Assure-toi d'être dans le bon répertoire"
-    print_error "Tu dois lancer ce script depuis le dossier cloné"
+    print_error "pom.xml not found!"
+    print_error "Make sure you are in the correct directory"
+    print_error "You must run this script from the cloned folder"
     echo ""
-    echo "Commandes correctes :"
+    echo "Correct commands:"
     echo "  git clone https://github.com/CryptoSauceYT/AutomatisationUT.git"
     echo "  cd AutomatisationUT"
     echo "  bash install_bot_github.sh"
     exit 1
 fi
 
-print_success "Code source détecté (pom.xml trouvé)"
+print_success "Source code detected (pom.xml found)"
 
-# Détecter le répertoire de travail
+# Detect working directory
 CURRENT_DIR=$(pwd)
-print_info "Répertoire de travail : $CURRENT_DIR"
+print_info "Working directory: $CURRENT_DIR"
 
 # ============================================================================
-# 1. MISE À JOUR SYSTÈME
+# 0. TIMEZONE CONFIGURATION (UTC)
 # ============================================================================
-print_step "1️⃣  MISE À JOUR DU SYSTÈME"
-sudo apt update -qq
-sudo apt upgrade -y -qq
-print_success "Système mis à jour"
+print_step "0. TIMEZONE CONFIGURATION (UTC)"
 
-# ============================================================================
-# 2. INSTALLATION DOCKER
-# ============================================================================
-print_step "2️⃣  INSTALLATION DE DOCKER"
-
-if command -v docker &> /dev/null; then
-    print_warning "Docker déjà installé ($(docker --version))"
+CURRENT_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone)
+if [ "$CURRENT_TZ" = "UTC" ] || [ "$CURRENT_TZ" = "Etc/UTC" ]; then
+    print_success "Timezone already set to UTC"
 else
-    print_info "Installation de Docker..."
-    sudo apt install -y -qq apt-transport-https ca-certificates curl software-properties-common
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt update -qq
-    sudo apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    sudo usermod -aG docker $USER
-    print_success "Docker installé: $(docker --version)"
+    print_info "Setting timezone to UTC for webhook compatibility..."
+    sudo timedatectl set-timezone UTC 2>/dev/null || sudo ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+    print_success "Timezone set to UTC"
 fi
 
-# ============================================================================
-# 3. OUTILS
-# ============================================================================
-print_step "3️⃣  INSTALLATION DES OUTILS"
-sudo apt install -y -qq git nano htop unzip curl jq
-print_success "Outils installés"
+# Display current time
+print_info "Current server time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
 # ============================================================================
-# 4. FIREWALL
+# 1. SYSTEM UPDATE (Ubuntu 24+ compatible)
 # ============================================================================
-print_step "4️⃣  CONFIGURATION DU FIREWALL"
-sudo ufw --force enable
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 8080/tcp
-print_success "Firewall configuré"
+print_step "1. SYSTEM UPDATE"
+
+# Disable third-party repositories that may not support newer Ubuntu versions
+print_info "Checking repository compatibility..."
+
+# Create backup of sources list and disable incompatible repos
+if [ -d "/etc/apt/sources.list.d" ]; then
+    # Find and disable repos that don't support the current Ubuntu version
+    for repo_file in /etc/apt/sources.list.d/*.list; do
+        if [ -f "$repo_file" ]; then
+            # Check if repo contains unsupported codenames or known incompatible sources
+            if grep -qE "monarx|questing" "$repo_file" 2>/dev/null; then
+                print_warning "Disabling incompatible repository: $(basename $repo_file)"
+                sudo mv "$repo_file" "${repo_file}.disabled" 2>/dev/null || true
+            fi
+        fi
+    done
+fi
+
+# Update with error tolerance for Ubuntu 25+
+print_info "Updating package lists..."
+sudo apt-get update 2>&1 | grep -v "does not have a Release file" | grep -v "N: Skipping" || true
+
+print_info "Upgrading system packages..."
+sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y 2>/dev/null || {
+    print_warning "Some packages could not be upgraded (non-critical)"
+}
+
+print_success "System updated"
 
 # ============================================================================
-# 5. TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ
+# 2. DOCKER INSTALLATION
 # ============================================================================
-print_step "5️⃣  TÉLÉCHARGEMENT DU JAR PRÉ-COMPILÉ"
+print_step "2. DOCKER INSTALLATION"
+
+if command -v docker &> /dev/null; then
+    print_warning "Docker already installed ($(docker --version))"
+else
+    print_info "Installing Docker..."
+    
+    # Install prerequisites
+    sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release 2>/dev/null
+    
+    # Add Docker GPG key
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    
+    # Determine the correct Ubuntu codename for Docker repo
+    # For Ubuntu 25+, use the latest supported LTS (noble = 24.04)
+    DOCKER_CODENAME=$UBUNTU_CODENAME
+    MAJOR_VERSION=$(echo $UBUNTU_VERSION | cut -d. -f1)
+    
+    if [ "$MAJOR_VERSION" -ge 25 ]; then
+        print_warning "Ubuntu $UBUNTU_VERSION detected - using Docker repo for Ubuntu 24.04 (noble)"
+        DOCKER_CODENAME="noble"
+    fi
+    
+    # Add Docker repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $DOCKER_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    sudo apt-get update 2>/dev/null || true
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null
+    
+    # Add current user to docker group
+    sudo usermod -aG docker $USER
+    
+    print_success "Docker installed: $(docker --version)"
+fi
+
+# Ensure Docker service is running
+sudo systemctl enable docker 2>/dev/null || true
+sudo systemctl start docker 2>/dev/null || true
+
+# ============================================================================
+# 3. TOOLS INSTALLATION
+# ============================================================================
+print_step "3. TOOLS INSTALLATION"
+sudo apt-get install -y git nano htop unzip curl jq 2>/dev/null
+print_success "Tools installed"
+
+# ============================================================================
+# 4. FIREWALL CONFIGURATION
+# ============================================================================
+print_step "4. FIREWALL CONFIGURATION"
+sudo ufw --force enable 2>/dev/null || true
+sudo ufw allow OpenSSH 2>/dev/null || true
+sudo ufw allow 80/tcp 2>/dev/null || true
+sudo ufw allow 443/tcp 2>/dev/null || true
+sudo ufw allow 8080/tcp 2>/dev/null || true
+print_success "Firewall configured"
+
+# ============================================================================
+# 5. DOWNLOAD PRE-COMPILED JAR
+# ============================================================================
+print_step "5. DOWNLOAD PRE-COMPILED JAR"
 
 mkdir -p target
 
 if [ ! -f "target/trading-bot-1.0.0.jar" ]; then
-    print_info "Téléchargement du JAR depuis GitHub Releases..."
+    print_info "Downloading JAR from GitHub Releases..."
     wget -q --show-progress \
         https://github.com/CryptoSauceYT/AutomatisationUT/releases/download/v1.0.0/trading-bot-1.0.0.jar \
         -O target/trading-bot-1.0.0.jar
     
     if [ -f "target/trading-bot-1.0.0.jar" ]; then
         JAR_SIZE=$(du -h target/trading-bot-1.0.0.jar | cut -f1)
-        print_success "JAR téléchargé ($JAR_SIZE)"
+        print_success "JAR downloaded ($JAR_SIZE)"
     else
-        print_error "Échec du téléchargement du JAR"
-        print_error "Vérifie ta connexion Internet et réessaye"
+        print_error "JAR download failed"
+        print_error "Check your internet connection and try again"
         exit 1
     fi
 else
-    print_success "JAR déjà présent"
+    print_success "JAR already present"
 fi
 
 # ============================================================================
-# 6. VÉRIFICATION DES FICHIERS DOCKER
+# 6. DOCKER FILES VERIFICATION
 # ============================================================================
-print_step "6️⃣  VÉRIFICATION DES FICHIERS DOCKER"
+print_step "6. DOCKER FILES VERIFICATION"
 
-# Vérifier Dockerfile - FORCER la version simple
-print_warning "Création du Dockerfile optimisé..."
+# Create optimized Dockerfile
+print_info "Creating optimized Dockerfile..."
 cat > Dockerfile << 'DOCKERFILE_END'
 FROM eclipse-temurin:11-jdk
 
 WORKDIR /app
+
+# Set timezone to UTC
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 COPY target/trading-bot-1.0.0.jar trading-bot.jar
 
@@ -163,12 +242,14 @@ EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "./trading-bot.jar"]
 DOCKERFILE_END
-print_success "Dockerfile créé"
+print_success "Dockerfile created"
 
-# Vérifier docker-compose.yml
+# Create/verify docker-compose.yml
 if [ ! -f "docker-compose.yml" ]; then
-    print_warning "docker-compose.yml manquant, création..."
-    cat > docker-compose.yml << 'COMPOSE_END'
+    print_warning "docker-compose.yml missing, creating..."
+fi
+
+cat > docker-compose.yml << 'COMPOSE_END'
 services:
   trading-bot:
     build: .
@@ -181,6 +262,7 @@ services:
     environment:
         SPRING_CONFIG_LOCATION: file:///config/
         SPRING_PROFILES_ACTIVE: prod
+        TZ: UTC
     networks:
       - bot-network
     restart: unless-stopped
@@ -192,6 +274,8 @@ services:
     volumes:
       - ./config/nginx.conf:/etc/nginx/conf.d/default.conf
       - /etc/nginx/ssl:/etc/nginx/ssl
+    environment:
+      - TZ=UTC
     depends_on:
       - trading-bot
     networks:
@@ -202,27 +286,24 @@ networks:
   bot-network:
     driver: bridge
 COMPOSE_END
-    print_success "docker-compose.yml créé"
-else
-    print_success "docker-compose.yml trouvé"
-fi
+print_success "docker-compose.yml created"
 
 # ============================================================================
-# 6. CONFIGURATION SSL
+# 7. SSL CONFIGURATION
 # ============================================================================
-print_step "6️⃣  CONFIGURATION SSL"
-echo "Type de certificat SSL:"
-echo "1) Let's Encrypt (GRATUIT, nécessite un domaine)"
-echo "2) Auto-signé (pour tests, utilise juste l'IP)"
-read -p "Choix (1 ou 2): " -n 1 -r SSL_CHOICE
+print_step "7. SSL CONFIGURATION"
+echo "SSL certificate type:"
+echo "1) Let's Encrypt (FREE, requires a domain)"
+echo "2) Self-signed (for testing, uses IP only)"
+read -p "Choice (1 or 2): " -n 1 -r SSL_CHOICE
 echo
 
 sudo mkdir -p /etc/nginx/ssl
 
 if [[ $SSL_CHOICE == "1" ]]; then
-    read -p "Nom de domaine (ex: bot.example.com): " DOMAIN_NAME
+    read -p "Domain name (e.g., bot.example.com): " DOMAIN_NAME
     
-    sudo apt install -y -qq certbot
+    sudo apt-get install -y certbot 2>/dev/null
     docker compose down 2>/dev/null || true
     
     sudo certbot certonly --standalone -d "$DOMAIN_NAME" --non-interactive --agree-tos --email admin@$DOMAIN_NAME
@@ -236,7 +317,7 @@ if [[ $SSL_CHOICE == "1" ]]; then
     SSL_KEY="/etc/nginx/ssl/$DOMAIN_NAME.key"
     WEBHOOK_URL="https://$DOMAIN_NAME/api/v1/place_limit_order"
     
-    print_success "Certificat Let's Encrypt configuré"
+    print_success "Let's Encrypt certificate configured"
     
 elif [[ $SSL_CHOICE == "2" ]]; then
     PUBLIC_IP=$(curl -s ifconfig.me)
@@ -253,11 +334,11 @@ elif [[ $SSL_CHOICE == "2" ]]; then
     SSL_KEY="/etc/nginx/ssl/selfsigned.key"
     WEBHOOK_URL="https://$PUBLIC_IP/api/v1/place_limit_order"
     
-    print_success "Certificat auto-signé créé"
-    print_warning "⚠️  Les navigateurs afficheront un warning (normal)"
+    print_success "Self-signed certificate created"
+    print_warning "Browsers will show a warning (this is normal)"
 fi
 
-# Créer nginx.conf
+# Create nginx.conf
 mkdir -p config
 cat > config/nginx.conf << NGINX_END
 server {
@@ -291,88 +372,90 @@ server {
     }
 }
 NGINX_END
-print_success "nginx.conf créé"
+print_success "nginx.conf created"
 
 # ============================================================================
-# 7. CONFIGURATION APPLICATION.YAML
+# 8. APPLICATION.YAML CONFIGURATION
 # ============================================================================
-print_step "7️⃣  CONFIGURATION DU BOT"
+print_step "8. BOT CONFIGURATION"
 
-# Backup de la config si elle existe déjà
+# Backup existing config if present
 if [ -f "config/application.yaml" ]; then
     cp config/application.yaml config/application.yaml.backup_$(date +%Y%m%d_%H%M%S)
-    print_success "Backup de la config créé"
+    print_success "Config backup created"
 fi
 
 print_warning ""
-print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-print_warning "⚠️  CONFIGURATION DES CLÉS API REQUISE"
-print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+print_warning "=============================================="
+print_warning "   API KEYS CONFIGURATION REQUIRED"
+print_warning "=============================================="
 echo ""
-echo "Édite maintenant le fichier de configuration:"
+echo "Edit the configuration file now:"
 echo ""
 echo "  nano $CURRENT_DIR/config/application.yaml"
 echo ""
-echo "Configure au minimum un profil avec:"
-echo "  • Tes clés API Bitunix"
-echo "  • Le levier et montant souhaités"
-echo "  • Le tp-offset selon ta stratégie"
+echo "Configure at least one profile with:"
+echo "  - Your Bitunix API keys"
+echo "  - Desired leverage and amount"
+echo "  - tp-offset according to your strategy"
 echo ""
-read -p "Appuie sur Enter une fois la configuration terminée..."
+read -p "Press Enter once configuration is complete..."
 
 # ============================================================================
-# 8. BUILD ET DÉMARRAGE
+# 9. BUILD AND START
 # ============================================================================
-print_step "8️⃣  BUILD ET DÉMARRAGE DU BOT"
+print_step "9. BUILD AND START BOT"
 
-print_info "Construction de l'image Docker (peut prendre 2-3 minutes)..."
+print_info "Building Docker image (may take 2-3 minutes)..."
 docker compose up -d --build
 
-print_info "Attente du démarrage (15 secondes)..."
+print_info "Waiting for startup (15 seconds)..."
 sleep 15
 
 if docker compose ps | grep -q "Up"; then
-    print_success "Bot démarré avec succès! 🎉"
+    print_success "Bot started successfully!"
 else
-    print_error "Problème au démarrage"
+    print_error "Startup problem detected"
     docker compose logs
     exit 1
 fi
 
 # ============================================================================
-# 9. TESTS
+# 10. TESTS
 # ============================================================================
-print_step "9️⃣  TESTS DE FONCTIONNEMENT"
+print_step "10. FUNCTIONALITY TESTS"
 
-echo "Test du health check..."
+echo "Testing health check..."
 sleep 3
 if curl -s http://localhost:8080/api/v1/check 2>/dev/null | grep -q "success"; then
-    print_success "Health check OK ✅"
+    print_success "Health check OK"
 else
-    print_warning "Health check non disponible (normal si le bot vient de démarrer)"
+    print_warning "Health check not available (normal if bot just started)"
 fi
 
 # ============================================================================
-# 10. SCRIPTS UTILES
+# 11. UTILITY SCRIPTS
 # ============================================================================
-print_step "🔟 CRÉATION DES SCRIPTS UTILES"
+print_step "11. CREATING UTILITY SCRIPTS"
 
 cat > "$HOME/monitor_bot.sh" << 'EOF'
 #!/bin/bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "       🤖 TRADING BOT STATUS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "=============================================="
+echo "       TRADING BOT STATUS"
+echo "=============================================="
 echo ""
-echo "🐋 Docker Containers:"
+echo "Server Time (UTC): $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+echo ""
+echo "Docker Containers:"
 cd ~/AutomatisationUT && docker compose ps
 echo ""
-echo "📊 Resource Usage:"
+echo "Resource Usage:"
 docker stats --no-stream --no-trunc --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 echo ""
-echo "📝 Last 30 log entries:"
+echo "Last 30 log entries:"
 cd ~/AutomatisationUT && docker compose logs --tail=30 trading-bot
 echo ""
-echo "🔗 Bot Health:"
+echo "Bot Health:"
 curl -s http://localhost:8080/api/v1/check | jq 2>/dev/null || curl -s http://localhost:8080/api/v1/check
 EOF
 chmod +x "$HOME/monitor_bot.sh"
@@ -380,87 +463,88 @@ chmod +x "$HOME/monitor_bot.sh"
 cat > "$HOME/backup_bot.sh" << 'EOF'
 #!/bin/bash
 BACKUP_DIR=~/bot-backups
-DATE=$(date +%Y%m%d_%H%M%S)
+DATE=$(date -u +%Y%m%d_%H%M%S)
 mkdir -p $BACKUP_DIR
 tar -czf $BACKUP_DIR/bot_config_$DATE.tar.gz ~/AutomatisationUT/config/
 ls -t $BACKUP_DIR/bot_config_*.tar.gz | tail -n +8 | xargs -r rm
-echo "✅ Backup: bot_config_$DATE.tar.gz"
+echo "Backup complete: bot_config_$DATE.tar.gz"
 EOF
 chmod +x "$HOME/backup_bot.sh"
 
 cat > "$HOME/restart_bot.sh" << 'EOF'
 #!/bin/bash
-echo "🔄 Redémarrage du bot..."
+echo "Restarting bot..."
 cd ~/AutomatisationUT
 docker compose down
 docker compose up -d --build
-echo "✅ Bot redémarré"
+echo "Bot restarted"
 sleep 5
 docker compose logs --tail=20 trading-bot
 EOF
 chmod +x "$HOME/restart_bot.sh"
 
-print_success "Scripts créés:"
-echo "  • ~/monitor_bot.sh"
-echo "  • ~/backup_bot.sh"
-echo "  • ~/restart_bot.sh"
+print_success "Scripts created:"
+echo "  - ~/monitor_bot.sh"
+echo "  - ~/backup_bot.sh"
+echo "  - ~/restart_bot.sh"
 
 # ============================================================================
-# RÉSUMÉ FINAL
+# FINAL SUMMARY
 # ============================================================================
-print_step "🎉 INSTALLATION TERMINÉE!"
+print_step "INSTALLATION COMPLETE!"
 
 cat << EOF
 
-╔═══════════════════════════════════════════════════════════════╗
-║                 ✅ TON BOT EST OPÉRATIONNEL! 🚀               ║
-╚═══════════════════════════════════════════════════════════════╝
++===============================================================+
+|             YOUR BOT IS NOW OPERATIONAL!                      |
++===============================================================+
 
-📁 Répertoire:    $CURRENT_DIR
-⚙️  Configuration: $CURRENT_DIR/config/application.yaml
-📊 Logs:          docker compose logs -f trading-bot
+Directory:     $CURRENT_DIR
+Configuration: $CURRENT_DIR/config/application.yaml
+Logs:          docker compose logs -f trading-bot
+Server Time:   UTC ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))
 
-🌐 WEBHOOK URL POUR TRADINGVIEW:
+WEBHOOK URL FOR TRADINGVIEW:
    
    $WEBHOOK_URL
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------------------------------------
 
-📋 PROCHAINES ÉTAPES:
+NEXT STEPS:
 
-1️⃣  Vérifie le bot:
+1. Check the bot:
    ~/monitor_bot.sh
 
-2️⃣  Configure TradingView:
-   • Crée une alerte sur ta stratégie
-   • Webhook URL: $WEBHOOK_URL
-   • Message: {{strategy.order.alert_message}}
+2. Configure TradingView:
+   - Create an alert on your strategy
+   - Webhook URL: $WEBHOOK_URL
+   - Message: {{strategy.order.alert_message}}
 
-3️⃣  Teste avec un PETIT montant d'abord!
+3. Test with a SMALL amount first!
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------------------------------------
 
-⚠️  RAPPEL SÉCURITÉ:
-   • Commence avec de PETITS montants (10-50 USDT)
-   • Pas de permission Withdraw sur les clés API
-   • Monitore quotidiennement pendant 1 semaine
-   • Backup régulier: ~/backup_bot.sh
+SECURITY REMINDER:
+   - Start with SMALL amounts (10-50 USDT)
+   - No Withdraw permission on API keys
+   - Monitor daily for 1 week
+   - Regular backup: ~/backup_bot.sh
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------------------------------------
 
-🛠️  COMMANDES UTILES:
-   • Voir logs:     docker compose logs -f trading-bot
-   • Status:        docker compose ps
-   • Redémarrer:    ~/restart_bot.sh
-   • Arrêter:       docker compose down
-   • Monitoring:    ~/monitor_bot.sh
-   • Mettre à jour: cd ~/AutomatisationUT && git pull && ~/restart_bot.sh
+USEFUL COMMANDS:
+   - View logs:     docker compose logs -f trading-bot
+   - Status:        docker compose ps
+   - Restart:       ~/restart_bot.sh
+   - Stop:          docker compose down
+   - Monitoring:    ~/monitor_bot.sh
+   - Update:        cd ~/AutomatisationUT && git pull && ~/restart_bot.sh
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------------------------------------
 
 EOF
 
-read -p "Veux-tu voir les logs en temps réel? (y/N): " -n 1 -r
+read -p "Do you want to see logs in real-time? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     docker compose logs -f trading-bot
