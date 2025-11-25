@@ -297,7 +297,7 @@ print_step "7. SSL CONFIGURATION"
 sudo mkdir -p /etc/nginx/ssl
 
 print_info "Generating self-signed SSL certificate..."
-PUBLIC_IP=$(curl -s ifconfig.me)
+PUBLIC_IP=$(curl -4 -s ifconfig.me)
 
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/selfsigned.key \
